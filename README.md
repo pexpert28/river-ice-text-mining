@@ -45,12 +45,6 @@ python src/fetching/digi_fetcher.py --query "jäätyminen" --start 1850-01-01 --
 python src/fetching/explore_digi_newspapers.py --start 1850 --end 1939 --no-probe
 ```
 
-## Team
-
-| Role | Responsibilities |
-|---|---|
-| Hydrologist | Domain expertise, crowdsourcing management, hydrological analysis, thesis writing |
-| ML Expert | Data pipeline, NLP/ML model development, technical infrastructure |
 
 ## Data Sources
 
