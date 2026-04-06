@@ -1,0 +1,33 @@
+# Downloaded data (can be large — regenerate with digi_fetcher.py)
+data/raw/
+data/processed/
+digi_output/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs and temp
+*.log
+*.tmp
