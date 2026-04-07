@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 digi_fetcher.py
 ===============
@@ -10,6 +12,8 @@ scriptable, GUI-free bulk extraction.
 
 QUICK START
 -----------
+  pip install requests tqdm
+
   # Search for river ice keywords, Finnish newspapers, 1880-1920:
   python digi_fetcher.py --query "jää" --start 1880-01-01 --end 1920-12-31
 
@@ -19,8 +23,14 @@ QUICK START
   # Multiple keywords (OR logic — repeat for each):
   python digi_fetcher.py --query "jää joki" --start 1850-01-01 --end 1939-12-31 --download
 
-  # Limit to a specific newspaper by ISSN:
-  python digi_fetcher.py --query "jää" --start 1880-01-01 --end 1920-12-31 --issn 0356-1429
+  # Limit to a specific newspaper by ISSN (no keyword needed):
+  python digi_fetcher.py --issn 0356-1429 --start 1880-01-01 --end 1920-12-31 --download
+
+  # Download everything in a date range from one newspaper, no keyword filter:
+  python digi_fetcher.py --issn 0355-6913 --start 1870-01-01 --end 1900-12-31 --download --all-pages
+
+  # Browse all available issues in a period (no keyword, no ISSN):
+  python digi_fetcher.py --start 1850-01-01 --end 1860-12-31 --manifest-only
 
   # Only show the search manifest (no download):
   python digi_fetcher.py --query "jäänlähtö" --start 1870-01-01 --end 1939-12-31 --manifest-only
@@ -157,23 +167,24 @@ def alto_xml_to_text(xml_path: str) -> str:
 
 # ── Search / binding discovery ────────────────────────────────────────────────
 
-def build_search_url(query: str, start: str, end: str,
+def build_search_url(query, start: str, end: str,
                      issn: str = None, language: str = "fi") -> str:
     """
     Build the digi.kansalliskirjasto.fi search URL that the binding-search
     API expects as its query parameters.
 
-    The official tool works by taking a URL from the Digi website and
-    appending its query string to the binding-search endpoint. We replicate
-    that URL structure here programmatically.
+    query is optional — omitting it returns all issues matching the other
+    filters (date range, ISSN, language), useful for downloading a specific
+    newspaper in full or browsing available coverage without a keyword filter.
     """
     params = {
-        "query":        query,
-        "startDate":    start,
-        "endDate":      end,
-        "formats":      "NEWSPAPER",
+        "startDate":     start,
+        "endDate":       end,
+        "formats":       "NEWSPAPER",
         "requireOnline": "true",
     }
+    if query:
+        params["query"] = query
     if issn:
         params["publicationId"] = issn
     if language and language != "all":
@@ -424,7 +435,7 @@ def print_summary(records: list[dict], args):
     print("=" * 72)
     print(f"  SEARCH RESULTS SUMMARY")
     print("=" * 72)
-    print(f"  Query       : {args.query}")
+    print(f"  Query       : {args.query or '(none — all issues in range)'}")
     print(f"  Date range  : {args.start}  →  {args.end}")
     if args.issn:
         print(f"  ISSN filter : {args.issn}")
@@ -466,8 +477,9 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
-    p.add_argument("--query",        required=True,
-                   help='Search keyword(s), e.g. "jää" or "jäätyminen joki"')
+    p.add_argument("--query",        default=None,
+                   help='Search keyword(s), e.g. "jää" or "jäätyminen joki". '
+                        'Optional — omit to fetch all issues matching the date/ISSN filters.')
     p.add_argument("--start",        default="1820-01-01",
                    help="Start date YYYY-MM-DD (default: 1820-01-01)")
     p.add_argument("--end",          default="1939-12-31",
@@ -515,7 +527,8 @@ def main():
             query_string, max_results=1, verbose=False)
         log(f"Loaded {len(records)} records from manifest.")
     else:
-        log(f'Searching: query="{args.query}" | {args.start} → {args.end} '
+        query_label = f'"{args.query}"' if args.query else "(no keyword — all issues)"
+        log(f'Searching: query={query_label} | {args.start} → {args.end} '
             f'| lang={args.language}' + (f' | issn={args.issn}' if args.issn else ''))
 
         query_string = build_search_url(

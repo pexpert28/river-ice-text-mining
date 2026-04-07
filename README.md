@@ -5,6 +5,12 @@ Crowdsourcing and Text Mining Digitized Finnish Newspapers to Reconstruct River 
 This project combines crowdsourcing, NLP, and machine learning to extract historical
 river ice observations (freeze dates, ice break-up, ice thickness) from Finnish
 digitized newspapers (1820–1939), scoped to major Finnish rivers.
+## Pipeline
+
+![Text extraction pipeline](docs/text_pipeline.svg)
+
+The pipeline runs from raw newspaper search through ALTO XML extraction, text
+normalization, NLP processing, and finally ice event detection.
 
 ## Project Structure
 
