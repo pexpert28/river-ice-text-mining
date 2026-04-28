@@ -168,14 +168,17 @@ def alto_xml_to_text(xml_path: str) -> str:
 # ── Search / binding discovery ────────────────────────────────────────────────
 
 def build_search_url(query, start: str, end: str,
-                     issn: str = None, language: str = "fi") -> str:
+                     language: str = "fi") -> str:
     """
     Build the digi.kansalliskirjasto.fi search URL that the binding-search
     API expects as its query parameters.
 
     query is optional — omitting it returns all issues matching the other
-    filters (date range, ISSN, language), useful for downloading a specific
-    newspaper in full or browsing available coverage without a keyword filter.
+    filters (date range, language), useful for browsing available coverage
+    without a keyword filter.
+
+    Note: the binding-search API does not support server-side ISSN filtering.
+    ISSN filtering is applied client-side after fetching all results.
     """
     params = {
         "startDate":     start,
@@ -185,8 +188,6 @@ def build_search_url(query, start: str, end: str,
     }
     if query:
         params["query"] = query
-    if issn:
-        params["publicationId"] = issn
     if language and language != "all":
         params["language"] = language
 
@@ -520,9 +521,12 @@ def main():
     if args.resume:
         log(f"Resuming from manifest: {args.resume}")
         records = load_manifest(args.resume)
+        if args.issn:
+            records = [r for r in records if r.get("publicationId") == args.issn]
+            log(f"After ISSN filter ({args.issn}): {len(records)} record(s) in manifest.")
         # We need format templates — re-run one search call to get them
         query_string    = build_search_url(
-            args.query, args.start, args.end, args.issn, args.language)
+            args.query, args.start, args.end, args.language)
         _, format_templates = fetch_all_bindings(
             query_string, max_results=1, verbose=False)
         log(f"Loaded {len(records)} records from manifest.")
@@ -532,7 +536,7 @@ def main():
             f'| lang={args.language}' + (f' | issn={args.issn}' if args.issn else ''))
 
         query_string = build_search_url(
-            args.query, args.start, args.end, args.issn, args.language)
+            args.query, args.start, args.end, args.language)
 
         rows, format_templates = fetch_all_bindings(
             query_string,
@@ -543,6 +547,13 @@ def main():
         if not rows:
             log("No results found. Try different keywords or date range.")
             sys.exit(0)
+
+        if args.issn:
+            rows = [r for r in rows if r.get("publicationId") == args.issn]
+            log(f"After ISSN filter ({args.issn}): {len(rows)} binding(s) remain.")
+            if not rows:
+                log("No results match the specified ISSN. Check the ISSN and date range.")
+                sys.exit(0)
 
         records = rows_to_manifest(rows, args.query)
         save_manifest(records, manifest_path)
