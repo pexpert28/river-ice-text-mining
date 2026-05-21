@@ -154,6 +154,55 @@ _KNOWN_ABBREVIATIONS = {
 }
 
 
+
+_OCR_SPACE_CONSONANTS = set('bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ')
+_OCR_SPACE_COMMON = {
+    'on','ei','se','ne','ja','tai','jo','ko','nyt','kun','jos','niin',
+    'yli','han','hän','me','te','he','en','et','av','på','de','vi','ni',
+}
+
+def _fix_ocr_spaces(text: str) -> str:
+    """
+    Remove OCR-inserted spaces mid-word.
+
+    Catches two patterns:
+      1. Capital + 1-2 lowercase chars + space + continuation:
+         "To ppilan" → "Toppilan", "Vii purin" → "Viipurin"
+      2. 2-4 lowercase chars ending in consonant + space + continuation:
+         "ter vehdyksistä" → "tervehdyksistä", "kar janjalostus" → "karjanjalostus"
+
+    Does NOT join common short words (on, ei, ja...) or fragments ending in vowels
+    (too ambiguous — could be real word boundaries).
+    """
+    words = text.split(' ')
+    result = []
+    i = 0
+    while i < len(words):
+        w = words[i]
+        if i < len(words) - 1:
+            nw = words[i + 1]
+            # Pattern 1: Capital + 1-2 lowercase (e.g. "To", "Vii", "Hel")
+            if (re.match(r'^[A-ZÅÄÖ][a-zåäö]{0,2}$', w)
+                    and nw and nw[0].islower()
+                    and nw not in _OCR_SPACE_COMMON
+                    and len(nw) >= 3):
+                result.append(w + nw)
+                i += 2
+                continue
+            # Pattern 2: 2-4 lowercase consonant-ending fragment
+            if (2 <= len(w) <= 4
+                    and w[0].islower()
+                    and w[-1] in _OCR_SPACE_CONSONANTS
+                    and nw and nw[0].islower()
+                    and nw not in _OCR_SPACE_COMMON
+                    and len(nw) >= 3):
+                result.append(w + nw)
+                i += 2
+                continue
+        result.append(w)
+        i += 1
+    return ' '.join(result)
+
 # ── Unicode and punctuation normalization ─────────────────────────────────────
 
 def _normalize_unicode(text: str) -> str:
@@ -176,6 +225,12 @@ def _normalize_unicode(text: str) -> str:
 
     # Normalize multiple spaces to single space (preserve newlines)
     text = re.sub(r'[ \t]{2,}', ' ', text)
+
+    # Remove OCR-inserted spaces mid-word.
+    # Two patterns:
+    #   1. Capital + 1-2 lowercase chars + space + continuation: "To ppilan" → "Toppilan"
+    #   2. 2-4 lowercase consonant-ending fragment + continuation: "ter vehdyksistä" → "tervehdyksistä"
+    text = _fix_ocr_spaces(text)
 
     # Normalize multiple newlines to max two
     text = re.sub(r'\n{3,}', '\n\n', text)
