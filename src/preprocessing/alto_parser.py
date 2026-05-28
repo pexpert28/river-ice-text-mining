@@ -304,8 +304,8 @@ def parse_alto_file(xml_path: str,
     page_height = 0
     page_el = root.find(f".//{_tag('Page', ns)}")
     if page_el is not None:
-        page_width  = int(page_el.get("WIDTH",  0))
-        page_height = int(page_el.get("HEIGHT", 0))
+        page_width  = round(float(page_el.get("WIDTH",  0)))
+        page_height = round(float(page_el.get("HEIGHT", 0)))
 
     # ── OCR software ──────────────────────────────────────────────────────────
     ocr_software = ""
@@ -317,8 +317,8 @@ def parse_alto_file(xml_path: str,
     blocks = []
     for block_el in root.iter(_tag("TextBlock", ns)):
         block_id = block_el.get("ID", "")
-        vpos     = int(block_el.get("VPOS", 0))
-        hpos     = int(block_el.get("HPOS", 0))
+        vpos     = round(float(block_el.get("VPOS", 0)))
+        hpos     = round(float(block_el.get("HPOS", 0)))
 
         raw_text, has_issues = _extract_text_from_block(block_el, ns)
 
