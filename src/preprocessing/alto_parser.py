@@ -359,23 +359,40 @@ def parse_alto_file(xml_path: str,
     )
 
 
-def parse_alto_directory(directory: str,
-                          clean: bool = True,
-                          sort_reading_order: bool = True) -> dict[str, ParsedPage]:
+def parse_alto_directory(
+    directory: str,
+    clean: bool = True,
+    sort_reading_order: bool = True,
+    recursive: bool = True,
+) -> dict[str, "ParsedPage"]:
     """
-    Parse all .xml files in a directory. Returns {filename: ParsedPage}.
+    Parse ALTO XML files under a directory.
+
+    With recursive=True (default), descends into all subdirectories —
+    matching the nested output of digi_fetcher (issn/year/binding/page.xml).
+
+    Keys in the returned dict are relative paths from `directory`, e.g.:
+      "0355-0842/1902/binding-001234/1902-03-11_binding-001234_page-00001.xml"
+
+    This avoids key collisions when two bindings have same-named page files.
     """
-    results = {}
-    xml_files = sorted(Path(directory).glob("*.xml"))
+    results: dict[str, "ParsedPage"] = {}
+    root_path = Path(directory)
+    pattern = "**/*.xml" if recursive else "*.xml"
+    xml_files = sorted(root_path.glob(pattern))
+
     if not xml_files:
-        print(f"[INFO] No .xml files found in {directory}")
+        print(f"[INFO] No .xml files found in {directory} (recursive={recursive})")
         return results
+
     for xml_path in xml_files:
+        rel_key = str(xml_path.relative_to(root_path))
         try:
             page = parse_alto_file(str(xml_path), clean, sort_reading_order)
-            results[xml_path.name] = page
+            results[rel_key] = page
         except Exception as e:
-            print(f"[WARN] Skipping {xml_path.name}: {e}")
+            print(f"[WARN] Skipping {rel_key}: {e}")
+
     return results
 
 

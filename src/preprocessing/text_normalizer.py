@@ -160,19 +160,29 @@ _OCR_SPACE_COMMON = {
     'on','ei','se','ne','ja','tai','jo','ko','nyt','kun','jos','niin',
     'yli','han','hän','me','te','he','en','et','av','på','de','vi','ni',
 }
-
+_OCR_SPACE_BLOCKLIST: frozenset[str] = frozenset({
+    # Finnish verbs (conjugated forms)
+    "on", "ei", "en", "et", "oli", "olin", "olet", "ovat", "eivät",
+    "sai", "saa", "saat", "sain", "tuli", "tein", "teet", "teen",
+    "voi", "voin", "voit", "saan", "olen",
+    # Finnish particles / conjunctions
+    "ja", "tai", "vai", "kun", "jos", "niin", "kuin", "vaan", "mut",
+    "sekä", "myös", "myöt", "siis", "nyt", "taas", "kuin", "sen",
+    # Finnish pronouns / determiners
+    "hän", "he", "me", "te", "sen", "sitä", "sillä", "siitä",
+    # Swedish equivalents
+    "och", "men", "som", "att", "det", "den", "han", "hon",
+    "är", "var", "har", "kan", "vil", "vid",
+})
 def _fix_ocr_spaces(text: str) -> str:
     """
-    Remove OCR-inserted spaces mid-word.
+    Rejoin words that OCR split with a spurious space mid-word.
 
-    Catches two patterns:
-      1. Capital + 1-2 lowercase chars + space + continuation:
-         "To ppilan" → "Toppilan", "Vii purin" → "Viipurin"
-      2. 2-4 lowercase chars ending in consonant + space + continuation:
-         "ter vehdyksistä" → "tervehdyksistä", "kar janjalostus" → "karjanjalostus"
+    Pattern 1: Capital + 1-2 lowercase  →  "To ppilan" → "Toppilan"
+    Pattern 2: 2-4 lowercase consonant-ending fragment  →  "ter vehdys" → "tervehdys"
 
-    Does NOT join common short words (on, ei, ja...) or fragments ending in vowels
-    (too ambiguous — could be real word boundaries).
+    Pattern 2 is gated by _OCR_SPACE_BLOCKLIST to avoid merging real short
+    words like "ovat saaneet" → "ovatsaaneet".
     """
     words = text.split(' ')
     result = []
@@ -181,6 +191,7 @@ def _fix_ocr_spaces(text: str) -> str:
         w = words[i]
         if i < len(words) - 1:
             nw = words[i + 1]
+
             # Pattern 1: Capital + 1-2 lowercase (e.g. "To", "Vii", "Hel")
             if (re.match(r'^[A-ZÅÄÖ][a-zåäö]{0,2}$', w)
                     and nw and nw[0].islower()
@@ -189,16 +200,20 @@ def _fix_ocr_spaces(text: str) -> str:
                 result.append(w + nw)
                 i += 2
                 continue
+
             # Pattern 2: 2-4 lowercase consonant-ending fragment
+            # Guard: skip complete words in the blocklist
             if (2 <= len(w) <= 4
                     and w[0].islower()
                     and w[-1] in _OCR_SPACE_CONSONANTS
+                    and w.lower() not in _OCR_SPACE_BLOCKLIST   # ← new
                     and nw and nw[0].islower()
                     and nw not in _OCR_SPACE_COMMON
                     and len(nw) >= 3):
                 result.append(w + nw)
                 i += 2
                 continue
+
         result.append(w)
         i += 1
     return ' '.join(result)
