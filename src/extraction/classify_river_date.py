@@ -49,7 +49,7 @@ RIVERS = {
         r"tenojoe",
         r"teno",
     ],
-    "Iiijoki": [
+    "Iijoki": [
         r"iiijok",
         r"iiijoe",
         r"iijok",
@@ -61,7 +61,7 @@ RIVERS = {
         r"kokemäe",
         r"kokemäenjo",
     ],
-    "Kymiijoki": [
+    "Kymijoki": [
         r"kymijok",
         r"kymijoe",
         r"kymiä",
